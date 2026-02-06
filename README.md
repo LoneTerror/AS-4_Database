@@ -5,7 +5,7 @@
 
 ```
 git clone https://github.com/LoneTerror/AS-4_Database.git
-cd reward-system
+cd AS-4_Database
 ```
 
 ## **2. Install Dependencies**
