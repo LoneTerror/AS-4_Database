@@ -1,6 +1,7 @@
 // Prisma Schema for Employee Rewards System
 // Prisma Version: 7.x
 // Database: PostgreSQL
+// Enhanced with Performance Indexes
 
 generator client {
   provider = "prisma-client"
@@ -33,6 +34,8 @@ model StatusMaster {
   transactions      Transaction[] @relation("TransactionStatus")
   reviews           Review[]      @relation("ReviewStatus")
 
+  @@index([entityType])
+  @@index([entityType, statusCode])
   @@map("status_master")
 }
 
@@ -51,6 +54,7 @@ model Designation {
   updatedByEmployee Employee   @relation("DesignationUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
   employees         Employee[] @relation("EmployeeDesignation")
 
+  @@index([level])
   @@map("designations")
 }
 
@@ -87,6 +91,7 @@ model Department {
   updatedByEmployee Employee       @relation("DepartmentUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
   employees         Employee[]     @relation("EmployeeDepartment")
 
+  @@index([departmentTypeId])
   @@map("departments")
 }
 
@@ -124,6 +129,7 @@ model TransactionType {
   updatedByEmployee Employee      @relation("TransactionTypeUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
   transactions      Transaction[]
 
+  @@index([isCredit])
   @@map("transaction_types")
 }
 
@@ -143,6 +149,7 @@ model RewardCategory {
   updatedByEmployee Employee        @relation("RewardCategoryUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
   rewardCatalog     RewardCatalog[]
 
+  @@index([isActive])
   @@map("reward_categories")
 }
 
@@ -167,6 +174,10 @@ model RewardCatalog {
   updatedByEmployee Employee        @relation("RewardCatalogUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
   rewardHistory     RewardHistory[]
 
+  @@index([categoryId])
+  @@index([isActive])
+  @@index([categoryId, isActive])
+  @@index([minPoints, maxPoints])
   @@map("reward_catalog")
 }
 
@@ -242,6 +253,14 @@ model Employee {
   createdStatuses          StatusMaster[]    @relation("StatusCreatedBy")
   updatedStatuses          StatusMaster[]    @relation("StatusUpdatedBy")
 
+  @@index([departmentId])
+  @@index([designationId])
+  @@index([managerId])
+  @@index([statusId])
+  @@index([dateOfJoining])
+  @@index([departmentId, statusId])
+  @@index([managerId, statusId])
+  @@index([createdAt])
   @@map("employees")
 }
 
@@ -268,6 +287,12 @@ model EmployeeRole {
   updatedByEmployee  Employee  @relation("EmployeeRoleUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
 
   @@unique([employeeId, roleId, isActive])
+  @@index([employeeId])
+  @@index([roleId])
+  @@index([isActive])
+  @@index([employeeId, isActive])
+  @@index([assignedAt])
+  @@index([revokedAt])
   @@map("employee_roles")
 }
 
@@ -290,6 +315,8 @@ model Wallet {
   transactions      Transaction[]
   rewardHistory     RewardHistory[]
 
+  @@index([availablePoints])
+  @@index([totalEarnedPoints])
   @@map("wallets")
 }
 
@@ -314,6 +341,13 @@ model Transaction {
   createdByEmployee Employee        @relation("TransactionCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
   updatedByEmployee Employee        @relation("TransactionUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
 
+  @@index([walletId])
+  @@index([transactionTypeId])
+  @@index([statusId])
+  @@index([transactionAt])
+  @@index([walletId, transactionAt])
+  @@index([walletId, statusId])
+  @@index([createdAt])
   @@map("transactions")
 }
 
@@ -337,6 +371,12 @@ model RewardHistory {
   createdByEmployee Employee      @relation("RewardHistoryCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
   updatedByEmployee Employee      @relation("RewardHistoryUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
 
+  @@index([walletId])
+  @@index([catalogId])
+  @@index([grantedBy])
+  @@index([grantedAt])
+  @@index([walletId, grantedAt])
+  @@index([catalogId, grantedAt])
   @@map("reward_history")
 }
 
@@ -362,6 +402,13 @@ model Review {
   createdByEmployee Employee     @relation("ReviewCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
   updatedByEmployee Employee     @relation("ReviewUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
 
+  @@index([reviewerId])
+  @@index([receiverId])
+  @@index([statusId])
+  @@index([reviewAt])
+  @@index([receiverId, statusId])
+  @@index([reviewerId, reviewAt])
+  @@index([rating])
   @@map("reviews")
 }
 
@@ -380,5 +427,12 @@ model AuditLog {
   // Relations
   performedByEmployee Employee @relation(fields: [performedBy], references: [id], onDelete: Restrict)
 
+  @@index([tableName])
+  @@index([recordId])
+  @@index([performedBy])
+  @@index([performedAt])
+  @@index([tableName, recordId])
+  @@index([tableName, recordId, performedAt])
+  @@index([operationType])
   @@map("audit_log")
 }
