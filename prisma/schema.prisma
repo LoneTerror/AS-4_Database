@@ -253,8 +253,8 @@ model Employee {
   updatedReviews          Review[]          @relation("ReviewUpdatedBy")
   createdStatuses         StatusMaster[]    @relation("StatusCreatedBy")
   updatedStatuses         StatusMaster[]    @relation("StatusUpdatedBy")
-  createdTokens           RefreshToken[]    @relation("TokenCreatedBy")
-  updatedTokens           RefreshToken[]    @relation("TokenUpdatedBy")
+  //createdTokens           RefreshToken[]    @relation("TokenCreatedBy")
+  //updatedTokens           RefreshToken[]    @relation("TokenUpdatedBy")
 
   @@index([departmentId])
   @@index([designationId])
@@ -454,16 +454,16 @@ model RefreshToken {
 
   // Audit Fields
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy String   @map("created_by") @db.Uuid
+  //createdBy String   @map("created_by") @db.Uuid
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy String   @map("updated_by") @db.Uuid
+  //updatedBy String   @map("updated_by") @db.Uuid
 
   // Relations
   employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   // Audit Relations
-  createdByEmployee Employee @relation("TokenCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  updatedByEmployee Employee @relation("TokenUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
+  //createdByEmployee Employee @relation("TokenCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
+  //updatedByEmployee Employee @relation("TokenUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
 
   @@index([employeeId])
   @@index([token])
