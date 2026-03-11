@@ -7,430 +7,212 @@ datasource db {
   provider = "postgresql"
 }
 
-model StatusMaster {
-  id                String        @id @default(dbgenerated("gen_random_uuid()")) @map("status_id") @db.Uuid
-  statusCode        String        @unique @map("status_code") @db.VarChar(50)
-  statusName        String        @map("status_name") @db.VarChar(100)
-  description       String?
-  entityType        String        @map("entity_type") @db.VarChar(50)
-  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String?       @map("created_by") @db.Uuid
-  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String?       @map("updated_by") @db.Uuid
-  employees         Employee[]    @relation("EmployeeStatus")
-  reviews           Review[]      @relation("ReviewStatus")
-  createdByEmployee Employee?     @relation("StatusCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  updatedByEmployee Employee?     @relation("StatusUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
-  transactions      Transaction[] @relation("TransactionStatus")
+model audit_log {
+  audit_id       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  table_name     String    @db.VarChar(100)
+  record_id      String    @db.Uuid
+  operation_type String    @db.VarChar(50)
+  old_values     Json?
+  new_values     Json?
+  performed_by   String    @db.Uuid
+  performed_at   DateTime  @default(now()) @db.Timestamptz(6)
+  ip_address     String?   @db.VarChar(45)
+  user_agent     String?
+  employees      employees @relation(fields: [performed_by], references: [employee_id])
 
-  @@index([entityType])
-  @@index([entityType, statusCode])
-  @@map("status_master")
+  @@index([operation_type])
+  @@index([performed_at])
+  @@index([performed_by])
+  @@index([record_id])
+  @@index([table_name])
+  @@index([table_name, record_id])
+  @@index([table_name, record_id, performed_at])
 }
 
-model Designation {
-  id                String     @id @default(dbgenerated("gen_random_uuid()")) @map("designation_id") @db.Uuid
-  designationName   String     @unique @map("designation_name") @db.VarChar(100)
-  designationCode   String     @unique @map("designation_code") @db.VarChar(50)
-  level             Int
-  createdAt         DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String?    @map("created_by") @db.Uuid
-  updatedAt         DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String?    @map("updated_by") @db.Uuid
-  createdByEmployee Employee?  @relation("DesignationCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  updatedByEmployee Employee?  @relation("DesignationUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
-  employees         Employee[] @relation("EmployeeDesignation")
+model department_types {
+  department_type_id                               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type_name                                        String        @unique @db.VarChar(100)
+  type_code                                        String        @unique @db.VarChar(50)
+  created_at                                       DateTime      @default(now()) @db.Timestamptz(6)
+  created_by                                       String?       @db.Uuid
+  updated_at                                       DateTime      @db.Timestamptz(6)
+  updated_by                                       String?       @db.Uuid
+  employees_department_types_created_byToemployees employees?    @relation("department_types_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  employees_department_types_updated_byToemployees employees?    @relation("department_types_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
+  departments                                      departments[]
+}
 
+model departments {
+  department_id                                  String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  department_name                                String           @unique @db.VarChar(100)
+  department_code                                String           @unique @db.VarChar(50)
+  department_type_id                             String           @db.Uuid
+  created_at                                     DateTime         @default(now()) @db.Timestamptz(6)
+  created_by                                     String?          @db.Uuid
+  updated_at                                     DateTime         @db.Timestamptz(6)
+  updated_by                                     String?          @db.Uuid
+  employees_departments_created_byToemployees    employees?       @relation("departments_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  department_types                               department_types @relation(fields: [department_type_id], references: [department_type_id])
+  employees_departments_updated_byToemployees    employees?       @relation("departments_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
+  employees_employees_department_idTodepartments employees[]      @relation("employees_department_idTodepartments")
+
+  @@index([department_type_id])
+}
+
+model designations {
+  designation_id                                   String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  designation_name                                 String      @unique @db.VarChar(100)
+  designation_code                                 String      @unique @db.VarChar(50)
+  level                                            Int
+  created_at                                       DateTime    @default(now()) @db.Timestamptz(6)
+  created_by                                       String?     @db.Uuid
+  updated_at                                       DateTime    @db.Timestamptz(6)
+  updated_by                                       String?     @db.Uuid
+  description                                      String?
+  is_active                                        Boolean     @default(true)
+  employees_designations_created_byToemployees     employees?  @relation("designations_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  employees_designations_updated_byToemployees     employees?  @relation("designations_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
+  employees_employees_designation_idTodesignations employees[] @relation("employees_designation_idTodesignations")
+
+  @@index([is_active])
   @@index([level])
-  @@map("designations")
 }
 
-model DepartmentType {
-  id                String       @id @default(dbgenerated("gen_random_uuid()")) @map("department_type_id") @db.Uuid
-  typeName          String       @unique @map("type_name") @db.VarChar(100)
-  typeCode          String       @unique @map("type_code") @db.VarChar(50)
-  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String?      @map("created_by") @db.Uuid
-  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String?      @map("updated_by") @db.Uuid
-  createdByEmployee Employee?    @relation("DepartmentTypeCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  updatedByEmployee Employee?    @relation("DepartmentTypeUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
-  departments       Department[]
+model employee_roles {
+  employee_role_id                                String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id                                     String     @db.Uuid
+  role_id                                         String     @db.Uuid
+  assigned_at                                     DateTime   @default(now()) @db.Timestamptz(6)
+  assigned_by                                     String     @db.Uuid
+  revoked_at                                      DateTime?  @db.Timestamptz(6)
+  revoked_by                                      String?    @db.Uuid
+  is_active                                       Boolean    @default(true)
+  created_at                                      DateTime   @default(now()) @db.Timestamptz(6)
+  created_by                                      String     @db.Uuid
+  updated_at                                      DateTime   @db.Timestamptz(6)
+  updated_by                                      String     @db.Uuid
+  employees_employee_roles_assigned_byToemployees employees  @relation("employee_roles_assigned_byToemployees", fields: [assigned_by], references: [employee_id])
+  employees_employee_roles_created_byToemployees  employees  @relation("employee_roles_created_byToemployees", fields: [created_by], references: [employee_id])
+  employees_employee_roles_employee_idToemployees employees  @relation("employee_roles_employee_idToemployees", fields: [employee_id], references: [employee_id], onDelete: Cascade)
+  employees_employee_roles_revoked_byToemployees  employees? @relation("employee_roles_revoked_byToemployees", fields: [revoked_by], references: [employee_id], onDelete: Restrict)
+  roles                                           roles      @relation(fields: [role_id], references: [role_id])
+  employees_employee_roles_updated_byToemployees  employees  @relation("employee_roles_updated_byToemployees", fields: [updated_by], references: [employee_id])
 
-  @@map("department_types")
+  @@unique([employee_id, role_id, is_active])
+  @@index([assigned_at])
+  @@index([employee_id])
+  @@index([employee_id, is_active])
+  @@index([is_active])
+  @@index([revoked_at])
+  @@index([role_id])
 }
 
-model Department {
-  id                String         @id @default(dbgenerated("gen_random_uuid()")) @map("department_id") @db.Uuid
-  departmentName    String         @unique @map("department_name") @db.VarChar(100)
-  departmentCode    String         @unique @map("department_code") @db.VarChar(50)
-  departmentTypeId  String         @map("department_type_id") @db.Uuid
-  createdAt         DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String?        @map("created_by") @db.Uuid
-  updatedAt         DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String?        @map("updated_by") @db.Uuid
-  createdByEmployee Employee?      @relation("DepartmentCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  departmentType    DepartmentType @relation(fields: [departmentTypeId], references: [id])
-  updatedByEmployee Employee?      @relation("DepartmentUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
-  employees         Employee[]     @relation("EmployeeDepartment")
-
-  @@index([departmentTypeId])
-  @@map("departments")
-}
-
-model Role {
-  id                String              @id @default(dbgenerated("gen_random_uuid()")) @map("role_id") @db.Uuid
-  roleName          String              @unique @map("role_name") @db.VarChar(100)
-  roleCode          String              @unique @map("role_code") @db.VarChar(50)
-  description       String?
-  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String?             @map("created_by") @db.Uuid
-  updatedAt         DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String?             @map("updated_by") @db.Uuid
-  reviewer_weight   Decimal             @default(1.0000) @db.Decimal(5, 4)
-  employeeRoles     EmployeeRole[]
-  createdByEmployee Employee?           @relation("RoleCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  updatedByEmployee Employee?           @relation("RoleUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
-  route_permissions route_permissions[]
-
-  @@map("roles")
-}
-
-model TransactionType {
-  id                String        @id @default(dbgenerated("gen_random_uuid()")) @map("type_id") @db.Uuid
-  typeName          String        @unique @map("type_name") @db.VarChar(100)
-  typeCode          String        @unique @map("type_code") @db.VarChar(50)
-  description       String?
-  isCredit          Boolean       @map("is_credit")
-  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String?       @map("created_by") @db.Uuid
-  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String?       @map("updated_by") @db.Uuid
-  createdByEmployee Employee?     @relation("TransactionTypeCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  updatedByEmployee Employee?     @relation("TransactionTypeUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
-  transactions      Transaction[]
-
-  @@index([isCredit])
-  @@map("transaction_types")
-}
-
-model RewardCategory {
-  id                String          @id @default(dbgenerated("gen_random_uuid()")) @map("category_id") @db.Uuid
-  categoryName      String          @unique @map("category_name") @db.VarChar(100)
-  categoryCode      String          @unique @map("category_code") @db.VarChar(50)
-  description       String?
-  isActive          Boolean         @default(true) @map("is_active")
-  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String?         @map("created_by") @db.Uuid
-  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String?         @map("updated_by") @db.Uuid
-  rewardCatalog     RewardCatalog[]
-  createdByEmployee Employee?       @relation("RewardCategoryCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  updatedByEmployee Employee?       @relation("RewardCategoryUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
-
-  @@index([isActive])
-  @@map("reward_categories")
-}
-
-model RewardCatalog {
-  id                String          @id @default(dbgenerated("gen_random_uuid()")) @map("catalog_id") @db.Uuid
-  rewardName        String          @unique @map("reward_name") @db.VarChar(200)
-  rewardCode        String          @unique @map("reward_code") @db.VarChar(50)
-  description       String?
-  defaultPoints     Int             @map("default_points")
-  categoryId        String          @map("category_id") @db.Uuid
-  minPoints         Int             @map("min_points")
-  maxPoints         Int             @map("max_points")
-  isActive          Boolean         @default(true) @map("is_active")
-  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String?         @map("created_by") @db.Uuid
-  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String?         @map("updated_by") @db.Uuid
-  available_stock   Int             @default(0)
-  category          RewardCategory  @relation(fields: [categoryId], references: [id])
-  createdByEmployee Employee?       @relation("RewardCatalogCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  updatedByEmployee Employee?       @relation("RewardCatalogUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
-  rewardHistory     RewardHistory[]
-
-  @@index([categoryId])
-  @@index([isActive])
-  @@index([categoryId, isActive])
-  @@index([minPoints, maxPoints])
-  @@map("reward_catalog")
-}
-
-model Employee {
-  id                                                              String                 @id @default(dbgenerated("gen_random_uuid()")) @map("employee_id") @db.Uuid
+model employees {
+  employee_id                                                     String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   username                                                        String                 @unique @db.VarChar(100)
   email                                                           String                 @unique @db.VarChar(255)
-  designationId                                                   String                 @map("designation_id") @db.Uuid
-  passwordHash                                                    String                 @map("password_hash") @db.VarChar(255)
-  departmentId                                                    String                 @map("department_id") @db.Uuid
-  managerId                                                       String?                @map("manager_id") @db.Uuid
-  dateOfJoining                                                   DateTime               @map("date_of_joining") @db.Date
-  statusId                                                        String                 @map("status_id") @db.Uuid
-  createdAt                                                       DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy                                                       String?                @map("created_by") @db.Uuid
-  updatedAt                                                       DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy                                                       String?                @map("updated_by") @db.Uuid
+  designation_id                                                  String                 @db.Uuid
+  password_hash                                                   String                 @db.VarChar(255)
+  department_id                                                   String                 @db.Uuid
+  manager_id                                                      String?                @db.Uuid
+  date_of_joining                                                 DateTime               @db.Date
+  status_id                                                       String                 @db.Uuid
+  created_at                                                      DateTime               @default(now()) @db.Timestamptz(6)
+  created_by                                                      String?                @db.Uuid
+  updated_at                                                      DateTime               @db.Timestamptz(6)
+  updated_by                                                      String?                @db.Uuid
   date_of_birth                                                   DateTime?              @db.Date
-  auditLogs                                                       AuditLog[]
-  createdDepartmentTypes                                          DepartmentType[]       @relation("DepartmentTypeCreatedBy")
-  updatedDepartmentTypes                                          DepartmentType[]       @relation("DepartmentTypeUpdatedBy")
-  createdDepartments                                              Department[]           @relation("DepartmentCreatedBy")
-  updatedDepartments                                              Department[]           @relation("DepartmentUpdatedBy")
-  createdDesignations                                             Designation[]          @relation("DesignationCreatedBy")
-  updatedDesignations                                             Designation[]          @relation("DesignationUpdatedBy")
-  assignedEmployeeRoles                                           EmployeeRole[]         @relation("EmployeeRoleAssignedBy")
-  createdEmployeeRoles                                            EmployeeRole[]         @relation("EmployeeRoleCreatedBy")
-  employeeRoles                                                   EmployeeRole[]
-  revokedEmployeeRoles                                            EmployeeRole[]         @relation("EmployeeRoleRevokedBy")
-  updatedEmployeeRoles                                            EmployeeRole[]         @relation("EmployeeRoleUpdatedBy")
-  creator                                                         Employee?              @relation("EmployeeCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict)
-  createdEmployees                                                Employee[]             @relation("EmployeeCreatedBy")
-  department                                                      Department             @relation("EmployeeDepartment", fields: [departmentId], references: [id])
-  designation                                                     Designation            @relation("EmployeeDesignation", fields: [designationId], references: [id])
-  manager                                                         Employee?              @relation("EmployeeManager", fields: [managerId], references: [id])
-  subordinates                                                    Employee[]             @relation("EmployeeManager")
-  status                                                          StatusMaster           @relation("EmployeeStatus", fields: [statusId], references: [id])
-  updater                                                         Employee?              @relation("EmployeeUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict)
-  updatedEmployees                                                Employee[]             @relation("EmployeeUpdatedBy")
-  refreshTokens                                                   RefreshToken[]
+  audit_log                                                       audit_log[]
+  department_types_department_types_created_byToemployees         department_types[]     @relation("department_types_created_byToemployees")
+  department_types_department_types_updated_byToemployees         department_types[]     @relation("department_types_updated_byToemployees")
+  departments_departments_created_byToemployees                   departments[]          @relation("departments_created_byToemployees")
+  departments_departments_updated_byToemployees                   departments[]          @relation("departments_updated_byToemployees")
+  designations_designations_created_byToemployees                 designations[]         @relation("designations_created_byToemployees")
+  designations_designations_updated_byToemployees                 designations[]         @relation("designations_updated_byToemployees")
+  employee_roles_employee_roles_assigned_byToemployees            employee_roles[]       @relation("employee_roles_assigned_byToemployees")
+  employee_roles_employee_roles_created_byToemployees             employee_roles[]       @relation("employee_roles_created_byToemployees")
+  employee_roles_employee_roles_employee_idToemployees            employee_roles[]       @relation("employee_roles_employee_idToemployees")
+  employee_roles_employee_roles_revoked_byToemployees             employee_roles[]       @relation("employee_roles_revoked_byToemployees")
+  employee_roles_employee_roles_updated_byToemployees             employee_roles[]       @relation("employee_roles_updated_byToemployees")
+  employees_employees_created_byToemployees                       employees?             @relation("employees_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  other_employees_employees_created_byToemployees                 employees[]            @relation("employees_created_byToemployees")
+  departments_employees_department_idTodepartments                departments            @relation("employees_department_idTodepartments", fields: [department_id], references: [department_id])
+  designations_employees_designation_idTodesignations             designations           @relation("employees_designation_idTodesignations", fields: [designation_id], references: [designation_id])
+  employees_employees_manager_idToemployees                       employees?             @relation("employees_manager_idToemployees", fields: [manager_id], references: [employee_id])
+  other_employees_employees_manager_idToemployees                 employees[]            @relation("employees_manager_idToemployees")
+  status_master_employees_status_idTostatus_master                status_master          @relation("employees_status_idTostatus_master", fields: [status_id], references: [status_id])
+  employees_employees_updated_byToemployees                       employees?             @relation("employees_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
+  other_employees_employees_updated_byToemployees                 employees[]            @relation("employees_updated_byToemployees")
+  refresh_tokens                                                  refresh_tokens[]
   review_categories_review_categories_created_byToemployees       review_categories[]    @relation("review_categories_created_byToemployees")
   review_categories_review_categories_updated_byToemployees       review_categories[]    @relation("review_categories_updated_byToemployees")
-  createdReviews                                                  Review[]               @relation("ReviewCreatedBy")
-  reviewsReceived                                                 Review[]               @relation("ReceiverEmployee")
-  reviewsGiven                                                    Review[]               @relation("ReviewerEmployee")
-  updatedReviews                                                  Review[]               @relation("ReviewUpdatedBy")
-  createdRewardCatalogs                                           RewardCatalog[]        @relation("RewardCatalogCreatedBy")
-  updatedRewardCatalogs                                           RewardCatalog[]        @relation("RewardCatalogUpdatedBy")
-  createdRewardCategories                                         RewardCategory[]       @relation("RewardCategoryCreatedBy")
-  updatedRewardCategories                                         RewardCategory[]       @relation("RewardCategoryUpdatedBy")
-  createdRewardHistory                                            RewardHistory[]        @relation("RewardHistoryCreatedBy")
-  rewardsGranted                                                  RewardHistory[]        @relation("GrantedByEmployee")
-  updatedRewardHistory                                            RewardHistory[]        @relation("RewardHistoryUpdatedBy")
-  createdRoles                                                    Role[]                 @relation("RoleCreatedBy")
-  updatedRoles                                                    Role[]                 @relation("RoleUpdatedBy")
+  reviews_reviews_created_byToemployees                           reviews[]              @relation("reviews_created_byToemployees")
+  reviews_reviews_receiver_idToemployees                          reviews[]              @relation("reviews_receiver_idToemployees")
+  reviews_reviews_reviewer_idToemployees                          reviews[]              @relation("reviews_reviewer_idToemployees")
+  reviews_reviews_updated_byToemployees                           reviews[]              @relation("reviews_updated_byToemployees")
+  reward_catalog_reward_catalog_created_byToemployees             reward_catalog[]       @relation("reward_catalog_created_byToemployees")
+  reward_catalog_reward_catalog_updated_byToemployees             reward_catalog[]       @relation("reward_catalog_updated_byToemployees")
+  reward_categories_reward_categories_created_byToemployees       reward_categories[]    @relation("reward_categories_created_byToemployees")
+  reward_categories_reward_categories_updated_byToemployees       reward_categories[]    @relation("reward_categories_updated_byToemployees")
+  reward_history_reward_history_created_byToemployees             reward_history[]       @relation("reward_history_created_byToemployees")
+  reward_history_reward_history_granted_byToemployees             reward_history[]       @relation("reward_history_granted_byToemployees")
+  reward_history_reward_history_updated_byToemployees             reward_history[]       @relation("reward_history_updated_byToemployees")
+  roles_roles_created_byToemployees                               roles[]                @relation("roles_created_byToemployees")
+  roles_roles_updated_byToemployees                               roles[]                @relation("roles_updated_byToemployees")
   seasonal_multipliers_seasonal_multipliers_created_byToemployees seasonal_multipliers[] @relation("seasonal_multipliers_created_byToemployees")
   seasonal_multipliers_seasonal_multipliers_updated_byToemployees seasonal_multipliers[] @relation("seasonal_multipliers_updated_byToemployees")
-  createdStatuses                                                 StatusMaster[]         @relation("StatusCreatedBy")
-  updatedStatuses                                                 StatusMaster[]         @relation("StatusUpdatedBy")
-  createdTransactionTypes                                         TransactionType[]      @relation("TransactionTypeCreatedBy")
-  updatedTransactionTypes                                         TransactionType[]      @relation("TransactionTypeUpdatedBy")
-  createdTransactions                                             Transaction[]          @relation("TransactionCreatedBy")
-  updatedTransactions                                             Transaction[]          @relation("TransactionUpdatedBy")
-  createdWallets                                                  Wallet[]               @relation("WalletCreatedBy")
-  wallet                                                          Wallet?
-  updatedWallets                                                  Wallet[]               @relation("WalletUpdatedBy")
+  status_master_status_master_created_byToemployees               status_master[]        @relation("status_master_created_byToemployees")
+  status_master_status_master_updated_byToemployees               status_master[]        @relation("status_master_updated_byToemployees")
+  transaction_types_transaction_types_created_byToemployees       transaction_types[]    @relation("transaction_types_created_byToemployees")
+  transaction_types_transaction_types_updated_byToemployees       transaction_types[]    @relation("transaction_types_updated_byToemployees")
+  transactions_transactions_created_byToemployees                 transactions[]         @relation("transactions_created_byToemployees")
+  transactions_transactions_updated_byToemployees                 transactions[]         @relation("transactions_updated_byToemployees")
+  wallets_wallets_created_byToemployees                           wallets[]              @relation("wallets_created_byToemployees")
+  wallets_wallets_employee_idToemployees                          wallets?               @relation("wallets_employee_idToemployees")
+  wallets_wallets_updated_byToemployees                           wallets[]              @relation("wallets_updated_byToemployees")
 
-  @@index([departmentId])
-  @@index([designationId])
-  @@index([managerId])
-  @@index([statusId])
-  @@index([dateOfJoining])
-  @@index([departmentId, statusId])
-  @@index([managerId, statusId])
-  @@index([createdAt])
+  @@index([created_at])
   @@index([date_of_birth])
-  @@map("employees")
-}
-
-model EmployeeRole {
-  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @map("employee_role_id") @db.Uuid
-  employeeId         String    @map("employee_id") @db.Uuid
-  roleId             String    @map("role_id") @db.Uuid
-  assignedAt         DateTime  @default(now()) @map("assigned_at") @db.Timestamptz(6)
-  assignedBy         String    @map("assigned_by") @db.Uuid
-  revokedAt          DateTime? @map("revoked_at") @db.Timestamptz(6)
-  revokedBy          String?   @map("revoked_by") @db.Uuid
-  isActive           Boolean   @default(true) @map("is_active")
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy          String    @map("created_by") @db.Uuid
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy          String    @map("updated_by") @db.Uuid
-  assignedByEmployee Employee  @relation("EmployeeRoleAssignedBy", fields: [assignedBy], references: [id])
-  createdByEmployee  Employee  @relation("EmployeeRoleCreatedBy", fields: [createdBy], references: [id])
-  employee           Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  revokedByEmployee  Employee? @relation("EmployeeRoleRevokedBy", fields: [revokedBy], references: [id], onDelete: Restrict)
-  role               Role      @relation(fields: [roleId], references: [id])
-  updatedByEmployee  Employee  @relation("EmployeeRoleUpdatedBy", fields: [updatedBy], references: [id])
-
-  @@unique([employeeId, roleId, isActive])
-  @@index([employeeId])
-  @@index([roleId])
-  @@index([isActive])
-  @@index([employeeId, isActive])
-  @@index([assignedAt])
-  @@index([revokedAt])
-  @@map("employee_roles")
-}
-
-model Wallet {
-  id                String          @id @default(dbgenerated("gen_random_uuid()")) @map("wallet_id") @db.Uuid
-  employeeId        String          @unique @map("employee_id") @db.Uuid
-  availablePoints   Int             @default(0) @map("available_points")
-  redeemedPoints    Int             @default(0) @map("redeemed_points")
-  totalEarnedPoints Int             @default(0) @map("total_earned_points")
-  version           Int             @default(1)
-  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String          @map("created_by") @db.Uuid
-  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String          @map("updated_by") @db.Uuid
-  rewardHistory     RewardHistory[]
-  transactions      Transaction[]
-  createdByEmployee Employee        @relation("WalletCreatedBy", fields: [createdBy], references: [id])
-  employee          Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  updatedByEmployee Employee        @relation("WalletUpdatedBy", fields: [updatedBy], references: [id])
-
-  @@index([availablePoints])
-  @@index([totalEarnedPoints])
-  @@map("wallets")
-}
-
-model Transaction {
-  id                String          @id @default(dbgenerated("gen_random_uuid()")) @map("transaction_id") @db.Uuid
-  walletId          String          @map("wallet_id") @db.Uuid
-  amount            Int
-  transactionTypeId String          @map("transaction_type_id") @db.Uuid
-  statusId          String          @map("status_id") @db.Uuid
-  description       String?
-  referenceNumber   String          @unique @map("reference_number") @db.VarChar(100)
-  transactionAt     DateTime        @default(now()) @map("transaction_at") @db.Timestamptz(6)
-  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String          @map("created_by") @db.Uuid
-  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String          @map("updated_by") @db.Uuid
-  createdByEmployee Employee        @relation("TransactionCreatedBy", fields: [createdBy], references: [id])
-  status            StatusMaster    @relation("TransactionStatus", fields: [statusId], references: [id])
-  transactionType   TransactionType @relation(fields: [transactionTypeId], references: [id])
-  updatedByEmployee Employee        @relation("TransactionUpdatedBy", fields: [updatedBy], references: [id])
-  wallet            Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
-
-  @@index([walletId])
-  @@index([transactionTypeId])
-  @@index([statusId])
-  @@index([transactionAt])
-  @@index([walletId, transactionAt])
-  @@index([walletId, statusId])
-  @@index([createdAt])
-  @@map("transactions")
-}
-
-model RewardHistory {
-  id                String        @id @default(dbgenerated("gen_random_uuid()")) @map("history_id") @db.Uuid
-  walletId          String        @map("wallet_id") @db.Uuid
-  catalogId         String        @map("catalog_id") @db.Uuid
-  grantedBy         String        @map("granted_by") @db.Uuid
-  points            Int
-  comment           String?
-  grantedAt         DateTime      @default(now()) @map("granted_at") @db.Timestamptz(6)
-  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy         String        @map("created_by") @db.Uuid
-  updatedAt         DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy         String        @map("updated_by") @db.Uuid
-  catalog           RewardCatalog @relation(fields: [catalogId], references: [id])
-  createdByEmployee Employee      @relation("RewardHistoryCreatedBy", fields: [createdBy], references: [id])
-  grantedByEmployee Employee      @relation("GrantedByEmployee", fields: [grantedBy], references: [id])
-  updatedByEmployee Employee      @relation("RewardHistoryUpdatedBy", fields: [updatedBy], references: [id])
-  wallet            Wallet        @relation(fields: [walletId], references: [id], onDelete: Cascade)
-
-  @@index([walletId])
-  @@index([catalogId])
-  @@index([grantedBy])
-  @@index([grantedAt])
-  @@index([walletId, grantedAt])
-  @@index([catalogId, grantedAt])
-  @@map("reward_history")
-}
-
-model Review {
-  id                   String                 @id @default(dbgenerated("gen_random_uuid()")) @map("review_id") @db.Uuid
-  reviewerId           String                 @map("reviewer_id") @db.Uuid
-  receiverId           String                 @map("receiver_id") @db.Uuid
-  rating               Int
-  comment              String
-  imageUrl             String?                @map("image_url") @db.VarChar(500)
-  videoUrl             String?                @map("video_url") @db.VarChar(500)
-  statusId             String                 @map("status_id") @db.Uuid
-  reviewAt             DateTime               @default(now()) @map("review_at") @db.Timestamptz(6)
-  createdAt            DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  createdBy            String                 @map("created_by") @db.Uuid
-  updatedAt            DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
-  updatedBy            String                 @map("updated_by") @db.Uuid
-  raw_points           Float?
-  review_category_tags review_category_tags[]
-  createdByEmployee    Employee               @relation("ReviewCreatedBy", fields: [createdBy], references: [id])
-  receiver             Employee               @relation("ReceiverEmployee", fields: [receiverId], references: [id])
-  reviewer             Employee               @relation("ReviewerEmployee", fields: [reviewerId], references: [id])
-  status               StatusMaster           @relation("ReviewStatus", fields: [statusId], references: [id])
-  updatedByEmployee    Employee               @relation("ReviewUpdatedBy", fields: [updatedBy], references: [id])
-
-  @@index([reviewerId])
-  @@index([receiverId])
-  @@index([statusId])
-  @@index([reviewAt])
-  @@index([receiverId, statusId])
-  @@index([reviewerId, reviewAt])
-  @@index([rating])
-  @@index([receiverId, raw_points])
-  @@index([receiverId, reviewAt])
-  @@map("reviews")
-}
-
-model AuditLog {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @map("audit_id") @db.Uuid
-  tableName           String   @map("table_name") @db.VarChar(100)
-  recordId            String   @map("record_id") @db.Uuid
-  operationType       String   @map("operation_type") @db.VarChar(50)
-  oldValues           Json?    @map("old_values")
-  newValues           Json?    @map("new_values")
-  performedBy         String   @map("performed_by") @db.Uuid
-  performedAt         DateTime @default(now()) @map("performed_at") @db.Timestamptz(6)
-  ipAddress           String?  @map("ip_address") @db.VarChar(45)
-  userAgent           String?  @map("user_agent")
-  performedByEmployee Employee @relation(fields: [performedBy], references: [id])
-
-  @@index([tableName])
-  @@index([recordId])
-  @@index([performedBy])
-  @@index([performedAt])
-  @@index([tableName, recordId])
-  @@index([tableName, recordId, performedAt])
-  @@index([operationType])
-  @@map("audit_log")
-}
-
-model RefreshToken {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @map("token_id") @db.Uuid
-  token      String    @unique @map("token_hash") @db.VarChar(255)
-  employeeId String    @map("employee_id") @db.Uuid
-  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(6)
-  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(6)
-  replacedBy String?   @map("replaced_by_token") @db.VarChar(255)
-  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt  DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-
-  @@index([employeeId])
-  @@index([token])
-  @@map("refresh_tokens")
+  @@index([date_of_joining])
+  @@index([department_id])
+  @@index([department_id, status_id])
+  @@index([designation_id])
+  @@index([manager_id])
+  @@index([manager_id, status_id])
+  @@index([status_id])
 }
 
 model notifications {
   notification_id String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   employee_id     String    @db.Uuid
-  title           String    @db.VarChar(200)
+  title           String    @db.VarChar(500)
   message         String
   type            String    @db.VarChar(50)
   is_read         Boolean   @default(false)
   email_sent      Boolean   @default(false)
   created_at      DateTime  @default(now()) @db.Timestamptz(6)
   read_at         DateTime? @db.Timestamptz(6)
+  send_attempts   Int       @default(0)
 
   @@index([created_at])
   @@index([email_sent])
   @@index([employee_id])
   @@index([employee_id, is_read])
+}
+
+model refresh_tokens {
+  token_id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  token_hash        String    @unique @db.VarChar(255)
+  employee_id       String    @db.Uuid
+  expires_at        DateTime  @db.Timestamptz(6)
+  revoked_at        DateTime? @db.Timestamptz(6)
+  replaced_by_token String?   @db.VarChar(255)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @db.Timestamptz(6)
+  employees         employees @relation(fields: [employee_id], references: [employee_id], onDelete: Cascade)
+
+  @@index([employee_id])
+  @@index([token_hash])
 }
 
 model review_categories {
@@ -444,8 +226,8 @@ model review_categories {
   created_by                                        String?                @db.Uuid
   updated_at                                        DateTime               @db.Timestamptz(6)
   updated_by                                        String?                @db.Uuid
-  employees_review_categories_created_byToemployees Employee?              @relation("review_categories_created_byToemployees", fields: [created_by], references: [id], onDelete: Restrict)
-  employees_review_categories_updated_byToemployees Employee?              @relation("review_categories_updated_byToemployees", fields: [updated_by], references: [id], onDelete: Restrict)
+  employees_review_categories_created_byToemployees employees?             @relation("review_categories_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  employees_review_categories_updated_byToemployees employees?             @relation("review_categories_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
   review_category_tags                              review_category_tags[]
 
   @@index([category_code])
@@ -460,11 +242,129 @@ model review_category_tags {
   category_code_snapshot String            @db.VarChar(50)
   created_at             DateTime          @default(now()) @db.Timestamptz(6)
   review_categories      review_categories @relation(fields: [category_id], references: [category_id])
-  reviews                Review            @relation(fields: [review_id], references: [id], onDelete: Cascade)
+  reviews                reviews           @relation(fields: [review_id], references: [review_id], onDelete: Cascade)
 
   @@unique([review_id, category_id])
   @@index([category_id])
   @@index([review_id])
+}
+
+model reviews {
+  review_id                                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewer_id                              String                 @db.Uuid
+  receiver_id                              String                 @db.Uuid
+  rating                                   Int
+  comment                                  String
+  image_url                                String?                @db.VarChar(500)
+  video_url                                String?                @db.VarChar(500)
+  status_id                                String                 @db.Uuid
+  review_at                                DateTime               @default(now()) @db.Timestamptz(6)
+  created_at                               DateTime               @default(now()) @db.Timestamptz(6)
+  created_by                               String                 @db.Uuid
+  updated_at                               DateTime               @db.Timestamptz(6)
+  updated_by                               String                 @db.Uuid
+  raw_points                               Float?
+  review_category_tags                     review_category_tags[]
+  employees_reviews_created_byToemployees  employees              @relation("reviews_created_byToemployees", fields: [created_by], references: [employee_id])
+  employees_reviews_receiver_idToemployees employees              @relation("reviews_receiver_idToemployees", fields: [receiver_id], references: [employee_id])
+  employees_reviews_reviewer_idToemployees employees              @relation("reviews_reviewer_idToemployees", fields: [reviewer_id], references: [employee_id])
+  status_master                            status_master          @relation(fields: [status_id], references: [status_id])
+  employees_reviews_updated_byToemployees  employees              @relation("reviews_updated_byToemployees", fields: [updated_by], references: [employee_id])
+
+  @@index([rating])
+  @@index([receiver_id])
+  @@index([receiver_id, raw_points])
+  @@index([receiver_id, review_at])
+  @@index([receiver_id, status_id])
+  @@index([review_at])
+  @@index([reviewer_id])
+  @@index([reviewer_id, review_at])
+  @@index([status_id])
+}
+
+model reward_catalog {
+  catalog_id                                     String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reward_name                                    String            @unique @db.VarChar(200)
+  reward_code                                    String            @unique @db.VarChar(50)
+  description                                    String?
+  default_points                                 Int
+  category_id                                    String            @db.Uuid
+  min_points                                     Int
+  max_points                                     Int
+  is_active                                      Boolean           @default(true)
+  created_at                                     DateTime          @default(now()) @db.Timestamptz(6)
+  created_by                                     String?           @db.Uuid
+  updated_at                                     DateTime          @db.Timestamptz(6)
+  updated_by                                     String?           @db.Uuid
+  available_stock                                Int               @default(0)
+  reward_categories                              reward_categories @relation(fields: [category_id], references: [category_id])
+  employees_reward_catalog_created_byToemployees employees?        @relation("reward_catalog_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  employees_reward_catalog_updated_byToemployees employees?        @relation("reward_catalog_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
+  reward_history                                 reward_history[]
+
+  @@index([category_id])
+  @@index([category_id, is_active])
+  @@index([is_active])
+  @@index([min_points, max_points])
+}
+
+model reward_categories {
+  category_id                                       String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  category_name                                     String           @unique @db.VarChar(100)
+  category_code                                     String           @unique @db.VarChar(50)
+  description                                       String?
+  is_active                                         Boolean          @default(true)
+  created_at                                        DateTime         @default(now()) @db.Timestamptz(6)
+  created_by                                        String?          @db.Uuid
+  updated_at                                        DateTime         @db.Timestamptz(6)
+  updated_by                                        String?          @db.Uuid
+  reward_catalog                                    reward_catalog[]
+  employees_reward_categories_created_byToemployees employees?       @relation("reward_categories_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  employees_reward_categories_updated_byToemployees employees?       @relation("reward_categories_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
+
+  @@index([is_active])
+}
+
+model reward_history {
+  history_id                                     String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  wallet_id                                      String         @db.Uuid
+  catalog_id                                     String         @db.Uuid
+  granted_by                                     String         @db.Uuid
+  points                                         Int
+  comment                                        String?
+  granted_at                                     DateTime       @default(now()) @db.Timestamptz(6)
+  created_at                                     DateTime       @default(now()) @db.Timestamptz(6)
+  created_by                                     String         @db.Uuid
+  updated_at                                     DateTime       @db.Timestamptz(6)
+  updated_by                                     String         @db.Uuid
+  reward_catalog                                 reward_catalog @relation(fields: [catalog_id], references: [catalog_id])
+  employees_reward_history_created_byToemployees employees      @relation("reward_history_created_byToemployees", fields: [created_by], references: [employee_id])
+  employees_reward_history_granted_byToemployees employees      @relation("reward_history_granted_byToemployees", fields: [granted_by], references: [employee_id])
+  employees_reward_history_updated_byToemployees employees      @relation("reward_history_updated_byToemployees", fields: [updated_by], references: [employee_id])
+  wallets                                        wallets        @relation(fields: [wallet_id], references: [wallet_id], onDelete: Cascade)
+
+  @@index([catalog_id, granted_at])
+  @@index([catalog_id])
+  @@index([granted_at])
+  @@index([granted_by])
+  @@index([wallet_id, granted_at])
+  @@index([wallet_id])
+}
+
+model roles {
+  role_id                               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  role_name                             String              @unique @db.VarChar(100)
+  role_code                             String              @unique @db.VarChar(50)
+  description                           String?
+  created_at                            DateTime            @default(now()) @db.Timestamptz(6)
+  created_by                            String?             @db.Uuid
+  updated_at                            DateTime            @db.Timestamptz(6)
+  updated_by                            String?             @db.Uuid
+  reviewer_weight                       Decimal             @default(1.0000) @db.Decimal(5, 4)
+  employee_roles                        employee_roles[]
+  employees_roles_created_byToemployees employees?          @relation("roles_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  employees_roles_updated_byToemployees employees?          @relation("roles_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
+  route_permissions                     route_permissions[]
 }
 
 model route_permissions {
@@ -476,27 +376,114 @@ model route_permissions {
   created_by String?   @db.Uuid
   updated_at DateTime? @db.Timestamptz(6)
   updated_by String?   @db.Uuid
-  roles      Role      @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_route_permissions_role")
+  title      String?   @db.VarChar(200)
+  roles      roles     @relation(fields: [role_id], references: [role_id], onDelete: Cascade, onUpdate: NoAction, map: "fk_route_permissions_role")
 
   @@unique([route_key, role_id], map: "uq_route_permissions_route_role")
   @@index([route_key], map: "idx_route_permissions_route_key")
 }
 
 model seasonal_multipliers {
-  seasonal_multiplier_id                               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  seasonal_multiplier_id                               String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   quarter                                              Int
-  label                                                String    @db.VarChar(50)
-  multiplier                                           Decimal   @db.Decimal(5, 4)
-  effective_from                                       DateTime? @db.Date
-  effective_to                                         DateTime? @db.Date
-  created_at                                           DateTime  @default(now()) @db.Timestamptz(6)
-  created_by                                           String?   @db.Uuid
-  updated_at                                           DateTime  @db.Timestamptz(6)
-  updated_by                                           String?   @db.Uuid
-  employees_seasonal_multipliers_created_byToemployees Employee? @relation("seasonal_multipliers_created_byToemployees", fields: [created_by], references: [id], onDelete: Restrict)
-  employees_seasonal_multipliers_updated_byToemployees Employee? @relation("seasonal_multipliers_updated_byToemployees", fields: [updated_by], references: [id], onDelete: Restrict)
+  label                                                String     @db.VarChar(50)
+  multiplier                                           Decimal    @db.Decimal(5, 4)
+  effective_from                                       DateTime?  @db.Date
+  effective_to                                         DateTime?  @db.Date
+  created_at                                           DateTime   @default(now()) @db.Timestamptz(6)
+  created_by                                           String?    @db.Uuid
+  updated_at                                           DateTime   @db.Timestamptz(6)
+  updated_by                                           String?    @db.Uuid
+  employees_seasonal_multipliers_created_byToemployees employees? @relation("seasonal_multipliers_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  employees_seasonal_multipliers_updated_byToemployees employees? @relation("seasonal_multipliers_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
 
   @@unique([quarter, effective_from])
   @@index([effective_from])
   @@index([quarter])
+}
+
+model status_master {
+  status_id                                     String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  status_code                                   String         @unique @db.VarChar(50)
+  status_name                                   String         @db.VarChar(100)
+  description                                   String?
+  entity_type                                   String         @db.VarChar(50)
+  created_at                                    DateTime       @default(now()) @db.Timestamptz(6)
+  created_by                                    String?        @db.Uuid
+  updated_at                                    DateTime       @db.Timestamptz(6)
+  updated_by                                    String?        @db.Uuid
+  employees_employees_status_idTostatus_master  employees[]    @relation("employees_status_idTostatus_master")
+  reviews                                       reviews[]
+  employees_status_master_created_byToemployees employees?     @relation("status_master_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  employees_status_master_updated_byToemployees employees?     @relation("status_master_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
+  transactions                                  transactions[]
+
+  @@index([entity_type])
+  @@index([entity_type, status_code])
+}
+
+model transaction_types {
+  type_id                                           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type_name                                         String         @unique @db.VarChar(100)
+  type_code                                         String         @unique @db.VarChar(50)
+  description                                       String?
+  is_credit                                         Boolean
+  created_at                                        DateTime       @default(now()) @db.Timestamptz(6)
+  created_by                                        String?        @db.Uuid
+  updated_at                                        DateTime       @db.Timestamptz(6)
+  updated_by                                        String?        @db.Uuid
+  employees_transaction_types_created_byToemployees employees?     @relation("transaction_types_created_byToemployees", fields: [created_by], references: [employee_id], onDelete: Restrict)
+  employees_transaction_types_updated_byToemployees employees?     @relation("transaction_types_updated_byToemployees", fields: [updated_by], references: [employee_id], onDelete: Restrict)
+  transactions                                      transactions[]
+
+  @@index([is_credit])
+}
+
+model transactions {
+  transaction_id                               String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  wallet_id                                    String            @db.Uuid
+  amount                                       Int
+  transaction_type_id                          String            @db.Uuid
+  status_id                                    String            @db.Uuid
+  description                                  String?
+  reference_number                             String            @unique @db.VarChar(100)
+  transaction_at                               DateTime          @default(now()) @db.Timestamptz(6)
+  created_at                                   DateTime          @default(now()) @db.Timestamptz(6)
+  created_by                                   String            @db.Uuid
+  updated_at                                   DateTime          @db.Timestamptz(6)
+  updated_by                                   String            @db.Uuid
+  employees_transactions_created_byToemployees employees         @relation("transactions_created_byToemployees", fields: [created_by], references: [employee_id])
+  status_master                                status_master     @relation(fields: [status_id], references: [status_id])
+  transaction_types                            transaction_types @relation(fields: [transaction_type_id], references: [type_id])
+  employees_transactions_updated_byToemployees employees         @relation("transactions_updated_byToemployees", fields: [updated_by], references: [employee_id])
+  wallets                                      wallets           @relation(fields: [wallet_id], references: [wallet_id], onDelete: Cascade)
+
+  @@index([created_at])
+  @@index([status_id])
+  @@index([transaction_at])
+  @@index([transaction_type_id])
+  @@index([wallet_id])
+  @@index([wallet_id, status_id])
+  @@index([wallet_id, transaction_at])
+}
+
+model wallets {
+  wallet_id                                String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  employee_id                              String           @unique @db.Uuid
+  available_points                         Int              @default(0)
+  redeemed_points                          Int              @default(0)
+  total_earned_points                      Int              @default(0)
+  version                                  Int              @default(1)
+  created_at                               DateTime         @default(now()) @db.Timestamptz(6)
+  created_by                               String           @db.Uuid
+  updated_at                               DateTime         @db.Timestamptz(6)
+  updated_by                               String           @db.Uuid
+  reward_history                           reward_history[]
+  transactions                             transactions[]
+  employees_wallets_created_byToemployees  employees        @relation("wallets_created_byToemployees", fields: [created_by], references: [employee_id])
+  employees_wallets_employee_idToemployees employees        @relation("wallets_employee_idToemployees", fields: [employee_id], references: [employee_id], onDelete: Cascade)
+  employees_wallets_updated_byToemployees  employees        @relation("wallets_updated_byToemployees", fields: [updated_by], references: [employee_id])
+
+  @@index([available_points])
+  @@index([total_earned_points])
 }
